@@ -42,7 +42,6 @@ static string usb_sysfs_friendly_name(const string& sys_usb_path);
 static vector<string> get_sysfs_info(const string& device_path);
 static string read_line(const string& file);
 static string usb_sysfs_hw_string(const string& sysfs_path);
-static string format(const char* format, ...);
 
 vector<string>
 glob(const vector<string>& patterns)
@@ -141,7 +140,7 @@ usb_sysfs_friendly_name(const string& sys_usb_path)
     if( manufacturer.empty() && product.empty() && serial.empty() )
         return "";
 
-    return format("%s %s %s", manufacturer.c_str(), product.c_str(), serial.c_str() );
+    return manufacturer + ';' + product + ';' + serial;
 }
 
 vector<string>
@@ -153,7 +152,7 @@ get_sysfs_info(const string& device_path)
 
     string hardware_id;
 
-    string sys_device_path = format( "/sys/class/tty/%s/device", device_name.c_str() );
+    string sys_device_path = "/sys/class/tty/" + device_name + "/device";
 
     if( device_name.compare(0,6,"ttyUSB") == 0 )
     {
@@ -216,82 +215,23 @@ read_line(const string& file)
 }
 
 string
-format(const char* format, ...)
-{
-    va_list ap;
-
-    size_t buffer_size_bytes = 256;
-
-    string result;
-
-    char* buffer = (char*)malloc(buffer_size_bytes);
-
-    if( buffer == NULL )
-        return result;
-
-    bool done = false;
-
-    unsigned int loop_count = 0;
-
-    while(!done)
-    {
-        va_start(ap, format);
-
-        int return_value = vsnprintf(buffer, buffer_size_bytes, format, ap);
-
-        if( return_value < 0 )
-        {
-            done = true;
-        }
-        else if( return_value >= buffer_size_bytes )
-        {
-            // Realloc and try again.
-
-            buffer_size_bytes = return_value + 1;
-
-            char* new_buffer_ptr = (char*)realloc(buffer, buffer_size_bytes);
-
-            if( new_buffer_ptr == NULL )
-            {
-                done = true;
-            }
-            else
-            {
-                buffer = new_buffer_ptr;
-            }
-        }
-        else
-        {
-            result = buffer;
-            done = true;
-        }
-
-        va_end(ap);
-
-        if( ++loop_count > 5 )
-            done = true;
-    }
-
-    free(buffer);
-
-    return result;
-}
-
-string
 usb_sysfs_hw_string(const string& sysfs_path)
 {
     string serial_number = read_line( sysfs_path + "/serial" );
 
-    if( serial_number.length() > 0 )
-    {
-        serial_number = format( "SNR=%s", serial_number.c_str() );
-    }
+    if( !serial_number.empty() )
+        serial_number = " SNR=" + serial_number;
+
+    string interface_number = read_line( sysfs_path + "../bInterfaceNumber" );
+
+    if( !interface_number.empty() )
+        interface_number = " If=" + interface_number;
 
     string vid = read_line( sysfs_path + "/idVendor" );
 
     string pid = read_line( sysfs_path + "/idProduct" );
 
-    return format("USB VID:PID=%s:%s %s", vid.c_str(), pid.c_str(), serial_number.c_str() );
+    return "USB VID:PID=" + vid + pid + interface_number + serial_number;
 }
 
 vector<PortInfo>

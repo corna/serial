@@ -88,6 +88,18 @@ serial::list_ports()
 		if(_tcsstr(port_name, _T("LPT")) != NULL)
 			continue;
 
+		// Get device interface detail data to get Device Instance from
+		// SP_DEVINFO_DATA and Device Path from SP_DEVICE_INTERFACE_DETAIL_DATA
+		SP_DEVICE_INTERFACE_DATA devInterfaceData;
+
+		devInterfaceData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
+
+		bSuccess = SetupDiGetDeviceInterfaceDetail(
+			device_info_set,
+			&devInterfaceData,
+			pDevDetail,// SP_DEVICE_INTERFACE_DETAIL_DATA
+			sizeof(buffer), &dwRequiredSize, &devInfoData); // SP_DEVINFO_DATA
+
 		// Get port friendly name
 
 		TCHAR friendly_name[friendly_name_max_length];
